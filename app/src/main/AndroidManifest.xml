@@ -16,9 +16,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Shop"
         tools:targetApi="31">
-        <activity android:name=".Activities.ShowShopsActivity">
+        <activity
+            android:name=".Activities.ShowShopsActivity"
+            android:exported="false" />
 
-        </activity>
+        <activity
+            android:name=".Activities.AddShopActivity"
+            android:exported="false" />
+
         <activity
             android:name=".Activities.MainActivity"
             android:exported="true">

@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.codebyashish.googledirectionapi.AbstractRouting
+import com.codebyashish.googledirectionapi.AbstractRouting.TravelMode
 import com.codebyashish.googledirectionapi.ErrorHandling
 import com.codebyashish.googledirectionapi.RouteDrawing
 import com.codebyashish.googledirectionapi.RouteInfoModel
@@ -44,6 +45,7 @@ class ShowShopsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnM
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var enabledShops: MutableList<Shop> = mutableListOf()
     private var polyline: MutableList<Polyline> = mutableListOf()
+    private var travelMode = TravelMode.DRIVING
 
     companion object {
         private const val LOCATION_REQUEST_CODE = 1
@@ -57,6 +59,12 @@ class ShowShopsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnM
 
         val i = intent
         enabledShops = i.getSerializableExtra("list") as MutableList<Shop>
+        val method = i.getIntExtra("method", 0)
+        if (method == 0) {
+            travelMode = TravelMode.DRIVING
+        } else {
+            travelMode = TravelMode.WALKING
+        }
 
         val mapFragment =
             supportFragmentManager.findFragmentById(R.id.mapfragment) as SupportMapFragment
@@ -92,26 +100,9 @@ class ShowShopsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnM
             }
 
         }
-
-        mGoogleMap.setOnCameraIdleListener {
-
-        }
-
-        mGoogleMap.setOnCameraMoveListener {
-            val newPos = mGoogleMap.projection.fromScreenLocation(
-                Point(binding.mapfragment.width / 2, binding.mapfragment.height / 2)
-            )
-//            val markerOptions = MarkerOptions().position(newPos)
-//            markerOptions.title("My location")
-//            mGoogleMap.addMarker(markerOptions)
-        }
-
     }
 
     private fun placeMarkerOnMap(currentLatLong: LatLng) {
-        val markerOptions = MarkerOptions().position(currentLatLong)
-        markerOptions.title("My location")
-        mGoogleMap.addMarker(markerOptions)
 
         enabledShops.forEach { shop ->
             val markerOptions = MarkerOptions().position(LatLng(shop.latitude, shop.longitude))
@@ -123,10 +114,8 @@ class ShowShopsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnM
             contact_person = "John Doe",
             id = 1,
             isEnabled = true,
-//            latitude = currentLatLong.latitude,
-//            longitude = currentLatLong.longitude,
-            latitude = 41.3347062432484,
-            longitude = 69.22088196688297,
+            latitude = currentLatLong.latitude,
+            longitude = currentLatLong.longitude,
             name = "Example Shop",
             phone = "+1234567890"
         )
@@ -136,7 +125,7 @@ class ShowShopsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnM
         for (i in 0 until enabledShops.count() - 1) {
             val routeDrawing = RouteDrawing.Builder()
                 .context(this)
-                .travelMode(AbstractRouting.TravelMode.DRIVING)
+                .travelMode(travelMode)
                 .withListener(this).alternativeRoutes(true)
                 .waypoints(
                     LatLng(enabledShops[i].latitude, enabledShops[i].longitude),

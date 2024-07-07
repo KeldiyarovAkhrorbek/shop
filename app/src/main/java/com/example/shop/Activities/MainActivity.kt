@@ -9,6 +9,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.annotation.RequiresExtension
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +19,9 @@ import com.example.shop.RetrofitInstance
 import com.example.shop.Shop
 import com.example.shop.ShopAdapter
 import com.example.shop.databinding.ActivityMainBinding
+import com.example.shop.databinding.DialogRadioViewBinding
+import com.example.shop.databinding.DialogViewBinding
+import kotlinx.coroutines.launch
 import java.io.IOException
 import java.io.Serializable
 
@@ -30,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var shopAdapter: ShopAdapter
 
     private var enabledShops: MutableList<Shop> = mutableListOf()
+    private var allShops: List<Shop> = mutableListOf()
 
 
     @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
@@ -68,6 +73,7 @@ class MainActivity : AppCompatActivity() {
 
             if (response.isSuccessful && response.body() != null) {
                 shopAdapter.shops = response.body()!!.shops
+                allShops = response.body()!!.shops
             } else {
                 Log.d(TAG, "Response not successfull")
             }
@@ -105,15 +111,33 @@ class MainActivity : AppCompatActivity() {
                 if (enabledShops.isEmpty()) {
                     Toast.makeText(this, "Select at least one shop", Toast.LENGTH_SHORT).show()
                 } else {
-                    val intent = Intent(this@MainActivity, ShowShopsActivity::class.java)
-                    intent.putExtra("list", enabledShops as Serializable)
-                    startActivity(intent)
+                    val builder = AlertDialog.Builder(this)
+                    builder.setTitle("Add point")
+                    val dialogRadioViewBinding = DialogRadioViewBinding.inflate(layoutInflater)
+                    builder.setView(dialogRadioViewBinding.root)
+
+                    builder.setPositiveButton("Show Shops") { dialog, which ->
+                        var selectedID = dialogRadioViewBinding.rgMethod.checkedRadioButtonId
+                        var method = 1
+                        if (selectedID == dialogRadioViewBinding.rbCar.id) {
+                            method = 0
+                        }
+                        val intent = Intent(this@MainActivity, ShowShopsActivity::class.java)
+                        intent.putExtra("list", enabledShops as Serializable)
+                        intent.putExtra("method", method)
+                        startActivity(intent)
+                    }
+
+                    builder.setNegativeButton(android.R.string.no) { dialog, which -> }
+                    builder.show()
                 }
 
             }
 
             R.id.new_shop -> {
-                Toast.makeText(this, "New view", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this@MainActivity, AddShopActivity::class.java)
+                intent.putExtra("list", allShops as Serializable)
+                startActivity(intent)
             }
         }
         return true
