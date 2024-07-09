@@ -17,6 +17,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.codebyashish.googledirectionapi.AbstractRouting
+import com.codebyashish.googledirectionapi.AbstractRouting.TravelMode
 import com.codebyashish.googledirectionapi.ErrorHandling
 import com.codebyashish.googledirectionapi.RouteDrawing
 import com.codebyashish.googledirectionapi.RouteInfoModel
@@ -26,6 +27,7 @@ import com.example.shop.RetrofitInstance
 import com.example.shop.Shop
 import com.example.shop.ShopAdapter
 import com.example.shop.databinding.ActivityYandexBinding
+import com.example.shop.databinding.DialogRadioViewBinding
 import com.example.shop.databinding.DialogViewBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -47,7 +49,7 @@ import java.util.ArrayList
 class YandexActivity : AppCompatActivity(), RouteListener {
 
 
-    private lateinit var currentLocation: Point
+    private var currentLocation: Point? = null
     private val TAG: String? = "SSSS"
     private lateinit var binding: ActivityYandexBinding
 
@@ -66,6 +68,7 @@ class YandexActivity : AppCompatActivity(), RouteListener {
     private var allShops: MutableList<Shop> = mutableListOf()
 
     private var markerLocation: Point = Point(0.0, 0.0)
+    private var travelMode: TravelMode = TravelMode.DRIVING
 
     @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,7 +79,7 @@ class YandexActivity : AppCompatActivity(), RouteListener {
         binding = ActivityYandexBinding.inflate(layoutInflater)
         setContentView(binding.root)
         mapKit = MapKitFactory.getInstance()
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
         setupMap()
         setupRecyclerView()
         loadData()
@@ -116,20 +119,23 @@ class YandexActivity : AppCompatActivity(), RouteListener {
     }
 
     fun clearRoutes() {
-        binding.mapview.map.mapObjects.clear()
+        if (currentLocation != null) {
+            binding.mapview.map.mapObjects.clear()
 
-        binding.mapview.map.move(
-            CameraPosition(currentLocation, 14.0f, 0.0f, 0.0f),
-            Animation(Animation.Type.SMOOTH, 1f),
-            null
-        )
+            binding.mapview.map.move(
+                CameraPosition(currentLocation!!, 14.0f, 0.0f, 0.0f),
+                Animation(Animation.Type.SMOOTH, 1f),
+                null
+            )
 
-        val placemark = binding.mapview.map.mapObjects.addPlacemark().apply {
-            geometry = currentLocation
-            setIcon(ImageProvider.fromResource(this@YandexActivity, R.drawable.person))
+            val placemark = binding.mapview.map.mapObjects.addPlacemark().apply {
+                geometry = currentLocation!!
+                setIcon(ImageProvider.fromResource(this@YandexActivity, R.drawable.person))
+            }
+            placemark.addTapListener(placemarkTapListener)
+            drawMarkers()
         }
-        placemark.addTapListener(placemarkTapListener)
-        drawMarkers()
+
     }
 
     fun drawRoute() {
@@ -144,18 +150,41 @@ class YandexActivity : AppCompatActivity(), RouteListener {
         enabledShops.forEach {
             waypoints.add(LatLng(it.latitude, it.longitude))
         }
+        if (currentLocation != null) {
+            waypoints.add(LatLng(currentLocation!!.latitude, currentLocation!!.longitude))
+        } else {
+            setupMap()
+            return
+        }
+        getTravelMode(waypoints)
+    }
 
-        waypoints.add(LatLng(currentLocation.latitude, currentLocation.longitude))
+    fun getTravelMode(waypoints: MutableList<LatLng>) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Add point")
+        val dialogRadioViewBinding = DialogRadioViewBinding.inflate(layoutInflater)
+        builder.setView(dialogRadioViewBinding.root)
 
-        val routeDrawing = RouteDrawing.Builder()
-            .context(this)
-            .travelMode(AbstractRouting.TravelMode.DRIVING)
-            .withListener(this).alternativeRoutes(false)
-            .waypoints(
-                waypoints
-            )
-            .build()
-        routeDrawing.execute()
+        builder.setPositiveButton("Show Shops") { dialog, which ->
+            var selectedID = dialogRadioViewBinding.rgMethod.checkedRadioButtonId
+            if (selectedID == dialogRadioViewBinding.rbCar.id) {
+                travelMode = TravelMode.DRIVING
+            } else {
+                travelMode = TravelMode.WALKING
+            }
+            val routeDrawing = RouteDrawing.Builder()
+                .context(this)
+                .travelMode(travelMode)
+                .withListener(this).alternativeRoutes(false)
+                .waypoints(
+                    waypoints
+                )
+                .build()
+            routeDrawing.execute()
+        }
+
+        builder.setNegativeButton(android.R.string.no) { dialog, which -> }
+        builder.show()
     }
 
     @RequiresExtension(extension = Build.VERSION_CODES.S, version = 7)
@@ -217,6 +246,28 @@ class YandexActivity : AppCompatActivity(), RouteListener {
                         allShops.add(newShop)
                         binding.markerImage.isVisible = false
                         binding.btnCancel.isVisible = false
+
+
+                        val placemark = binding.mapview.map.mapObjects.addPlacemark().apply {
+                            geometry = Point(newShop.latitude, newShop.longitude)
+                            setIcon(ImageProvider.fromResource(this@YandexActivity, R.drawable.marker30))
+                        }
+                        placemark.setText(
+                            newShop.name,
+                            TextStyle(
+                                10f,
+                                Color.BLACK,
+                                10f,
+                                Color.WHITE,
+                                TextStyle.Placement.BOTTOM,
+                                2f,
+                                true,
+                                true
+                            )
+                        )
+
+                        placemark.addTapListener(placemarkTapListener)
+
                     } else {
                         Toast.makeText(
                             this@YandexActivity,
@@ -321,27 +372,30 @@ class YandexActivity : AppCompatActivity(), RouteListener {
                 LOCATION_REQUEST_CODE
             )
             return
-        }
-        fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
-            if (location != null) {
-                lastLocation = location
-                currentLocation = Point(lastLocation.latitude, lastLocation.longitude)
-                binding.mapview.map.move(
-                    CameraPosition(currentLocation, 14.0f, 0.0f, 0.0f),
-                    Animation(Animation.Type.SMOOTH, 1f),
-                    null
-                )
+        } else {
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+            fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
+                if (location != null) {
+                    lastLocation = location
+                    currentLocation = Point(lastLocation.latitude, lastLocation.longitude)
+                    binding.mapview.map.move(
+                        CameraPosition(currentLocation!!, 14.0f, 0.0f, 0.0f),
+                        Animation(Animation.Type.SMOOTH, 1f),
+                        null
+                    )
 
-                val placemark = binding.mapview.map.mapObjects.addPlacemark().apply {
-                    geometry = currentLocation
-                    setIcon(ImageProvider.fromResource(this@YandexActivity, R.drawable.person))
+                    val placemark = binding.mapview.map.mapObjects.addPlacemark().apply {
+                        geometry = currentLocation!!
+                        setIcon(ImageProvider.fromResource(this@YandexActivity, R.drawable.person))
+                    }
+                    placemark.addTapListener(placemarkTapListener)
+
+                } else {
+                    Toast.makeText(this, "Location was null", Toast.LENGTH_SHORT).show()
                 }
-                placemark.addTapListener(placemarkTapListener)
-
-            } else {
-                Toast.makeText(this, "Location was null", Toast.LENGTH_SHORT).show()
             }
         }
+
     }
 
 
@@ -358,10 +412,7 @@ class YandexActivity : AppCompatActivity(), RouteListener {
     }
 
     override fun onRouteFailure(p0: ErrorHandling?) {
-        if (p0 != null)
-            Toast.makeText(this, p0.message, Toast.LENGTH_SHORT).show() else {
-            Toast.makeText(this, "Could not draw route", Toast.LENGTH_SHORT).show()
-        }
+        Toast.makeText(this, "Could not draw route", Toast.LENGTH_SHORT).show()
     }
 
     override fun onRouteStart() {
