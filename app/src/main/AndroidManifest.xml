@@ -17,15 +17,7 @@
         android:theme="@style/Theme.Shop"
         tools:targetApi="31">
         <activity
-            android:name=".Activities.ShowShopsActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".Activities.AddShopActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".Activities.MainActivity"
+            android:name=".Activities.YandexActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -33,6 +25,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".Activities.ShowShopsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Activities.AddShopActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Activities.MainActivity"
+            android:exported="true"></activity>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

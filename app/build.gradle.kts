@@ -58,4 +58,5 @@ dependencies {
     implementation("com.github.dangiashish:Google-Direction-Api:1.6")
     implementation("io.reactivex.rxjava3:rxjava:3.1.2")
     implementation("io.reactivex.rxjava3:rxandroid:3.0.0")
+    implementation("com.yandex.android:maps.mobile:4.6.1-lite")
 }
