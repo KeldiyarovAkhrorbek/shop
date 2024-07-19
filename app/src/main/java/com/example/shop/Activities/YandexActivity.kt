@@ -371,7 +371,7 @@ class YandexActivity : AppCompatActivity(), RouteListener {
                 arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
                 LOCATION_REQUEST_CODE
             )
-            return
+            setupMap()
         } else {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
             fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
